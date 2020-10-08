@@ -253,6 +253,10 @@
               "file": "base"
             },
             {
+              "title": "Install Identity Vault",
+              "file": "install"
+            },
+            {
               "title": "Identity Service",
               "file": "identity-service"
             },
