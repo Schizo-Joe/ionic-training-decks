@@ -156,60 +156,66 @@ At this point, you should have four failing tests. Update the code to make them 
 
 Instead of saving the token using Capacitor Storage, the code will need to register the session information with a call to the base class' `login()` method.
 
-Remove the "sets the token" and "saves the token in storage"
+Remove the "sets the token" and "saves the token in storage" test cases. Replace it with a test case that verifies that we call the base class' `login()` method with the correct information.
+
+```typescript
+it('calls the base class login', async () => {
+  spyOn(service, 'login');
+  await service.set(
+    {
+      id: 42,
+      firstName: 'Joe',
+      lastName: 'Tester',
+      email: 'test@test.org',
+    },
+    '19940059fkkf039',
+  );
+  expect(service.login).toHaveBeenCalledTimes(1);
+  expect(service.login).toHaveBeenCalledWith({
+    username: 'test@test.org',
+    token: '19940059fkkf039',
+  });
+});
+```
+
+Update the code accordingly:
 
 ```diff
    async set(user: User, token: string): Promise<void> {
-     this.user = user;
--    await this.setToken(token);
+     this._user = user;
+-    this._token = token;
+-    const { Storage } = Plugins;
+-    await Storage.set({ key: this.key, value: token });
 +    await this.login({ username: user.email, token });
-     this.changed.next(this.user);
+     this._changed.next(user);
    }
 ```
 
-#### `getToken()`
+#### The `clear()` Method
 
-If the token is not currently set within the service, we need to obtain the token from the vault rather than from Ionic Storage. Call the base class's `restoreSession()` to accomplish this.
+Instead of removing the token from Capacitor Storage, the `clear()` method will clear the session with a call to the base class' `logout()` method.
+
+Remove the "clears the token" and "clears the storage" test cases. Replace it with a test case that verifies that we call the base class' `logout()` method.
+
+```typescript
+it('calls the logout method', async () => {
+  spyOn(service, 'logout');
+  await service.clear();
+  expect(service.logout).toHaveBeenCalledTimes(1);
+});
+```
+
+Update the code accordingly:
 
 ```diff
-   async getToken(): Promise<string> {
-     if (!this.token) {
--      await this.storage.ready();
--      this.token = await this.storage.get(this.tokenKey);
-+      await this.restoreSession();
-     }
-     return this.token;
+   async clear(): Promise<void> {
+     this._user = undefined;
+-    this._token = undefined;
+-    const { Storage } = Plugins;
+-    await Storage.remove({ key: this.key });
++    await this.logout( );
+     this._changed.next();
    }
-```
-
-#### `remove()`
-
-Rather than removing the token using Ionic Storage, call the base class's `logout()` method which will remove the token from the vault.
-
-```TypeScript
-   async remove(): Promise<void> {
-     this.user = undefined;
--    await this.setToken('');
-+    await this.logout();
-     this.changed.next(this.user);
-   }
-```
-
-#### `restoreSession()`
-
-It is possible for the vault to get into a state where it it locked but cannot be unlocked. For example if a user locks via touch ID and then removes their fingerprint. In this case, we will get a `VaultErrorCodes.VaultLocked` error indicating that we cannot unlock the vault. If this is the case, clear the vault so the user can log in again.
-
-```TypeScript
-  async restoreSession(): Promise<DefaultSession> {
-    try {
-      return await super.restoreSession();
-    } catch (error) {
-      if (error.code === VaultErrorCodes.VaultLocked) {
-        const vault = await this.getVault();
-        await vault.clear();
-      }
-    }
-  }
 ```
 
 #### Final Cleanup
@@ -218,8 +224,4 @@ At this point, there should be some dead code and unused parameters. If you are 
 
 ## Conclusion
 
-At this point, the application should no longer work in the browser and you will need to run it on a device (we will fix that soon). Try it out on your device:
-
-- `npm run build`
-- `npx cap open ios` or `npx cap open android`
-- use Xcode or Android Studio to run the application on your attached device
+At this point, the application should work just like it did before, only now the auth token will be stored securely when running on a device. Next we will look at locking the vaults and allowing it to be unlocked via PIN or biometrics.

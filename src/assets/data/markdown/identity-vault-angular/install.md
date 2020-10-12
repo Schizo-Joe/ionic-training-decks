@@ -1,4 +1,4 @@
-# Lab: Identity Service
+# Lab: Installation and Basic Setup
 
 ## Install Identity Vault
 
